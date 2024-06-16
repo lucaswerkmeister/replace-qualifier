@@ -70,7 +70,7 @@ if ( !username || !password ) {
 await login( session, username, password );
 
 const baseSummary = 'change [[Property:P1793]] from .* to .+';
-const summary = `${baseSummary} ([[:toolforge:editgroups/b/CB/${Math.floor( Math.random() * Math.pow( 2, 48 ) ).toString( 16 )}|details]] )`;
+const summary = `${baseSummary} ([[:toolforge:editgroups/b/CB/${Math.floor( Math.random() * Math.pow( 2, 48 ) ).toString( 16 )}|details]])`;
 
 const statementIds = await queryStatements( `
 SELECT ?property ?propertyLabel ?statement WHERE {
