@@ -1,0 +1,21 @@
+{
+	"name": "replace-qualifier",
+	"version": "0.1.0",
+	"description": "Replace one qualifier string with another on Wikidata.",
+	"main": "index.js",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/lucaswerkmeister/replace-qualifier.git"
+	},
+	"author": "Lucas Werkmeister <mail@lucaswerkmeister.de>",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/lucaswerkmeister/replace-qualifier/issues"
+	},
+	"homepage": "https://github.com/lucaswerkmeister/replace-qualifier#readme",
+	"dependencies": {
+		"m3api": "^0.8.2",
+		"m3api-botpassword": "^0.2.1"
+	}
+}
