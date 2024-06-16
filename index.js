@@ -3,7 +3,7 @@ import { login } from 'm3api-botpassword';
 
 const userAgent = 'replace-qualifier (https://github.com/lucaswerkmeister/replace-qualifier; mail@lucaswerkmeister.de)';
 
-async function queryEntities( sparql ) {
+async function queryStatements( sparql ) {
 	const url = new URL( 'https://query.wikidata.org/sparql' );
 	url.searchParams.set( 'query', sparql );
 	const response = await fetch( url, {
@@ -13,42 +13,46 @@ async function queryEntities( sparql ) {
 		},
 	} );
 	const json = await response.json();
-	const entityIds = [];
+	const statementIds = [];
 	for ( const bindings of json.results.bindings ) {
-		const entityId = bindings.entity.value.replace( /^http:\/\/www\.wikidata\.org\/entity\//, '' );
-		entityIds.push( entityId );
+		const statementUri = bindings.statement.value;
+		const statementId = statementUri.replace( /^http:\/\/www\.wikidata\.org\/entity\/statement\//, '' )
+			  .replace( '-', '$' ); // only the first one
+		statementIds.push( statementId );
 	}
-	return entityIds;
+	return statementIds;
 }
 
-async function * replaceQualifier( session, entityId, mainProperty, qualifierProperty, fromString, toString, summary ) {
+async function replaceQualifier( session, statementId, mainProperty, qualifierProperty, fromString, toString, summary ) {
 	const statements = await session.request( {
 		action: 'wbgetclaims',
-		entity: entityId,
+		claim: statementId,
 		property: mainProperty,
 	} );
-	for ( const statement of statements.claims[ mainProperty ] || [] ) {
-		let changed = false;
-		for ( const qualifier of statement.qualifiers[ qualifierProperty ] || [] ) {
-			if ( qualifier.snaktype === 'value' && qualifier.datavalue.type === 'string' && qualifier.datavalue.value === fromString ) {
-				qualifier.datavalue.value = toString;
-				changed = true;
-			}
-		}
-		if ( !changed ) {
-			continue;
-		}
-		const response = await session.request( {
-			action: 'wbsetclaim',
-			claim: JSON.stringify( statement ),
-			summary,
-			bot: true,
-		}, {
-			method: 'POST',
-			tokenType: 'csrf',
-		} );
-		yield response.pageinfo.lastrevid;
+	const statement = statements.claims[ mainProperty ][ 0 ];
+	if  ( !statement ) {
+		return null;
 	}
+	let changed = false;
+	for ( const qualifier of statement.qualifiers[ qualifierProperty ] || [] ) {
+		if ( qualifier.snaktype === 'value' && qualifier.datavalue.type === 'string' && qualifier.datavalue.value === fromString ) {
+			qualifier.datavalue.value = toString;
+			changed = true;
+		}
+	}
+	if ( !changed ) {
+		return null;
+	}
+	const response = await session.request( {
+		action: 'wbsetclaim',
+		claim: JSON.stringify( statement ),
+		summary,
+		bot: true,
+	}, {
+		method: 'POST',
+		tokenType: 'csrf',
+	} );
+	return response.pageinfo.lastrevid;
 }
 
 const session = new Session( 'www.wikidata.org', {
@@ -65,18 +69,22 @@ if ( !username || !password ) {
 }
 await login( session, username, password );
 
-for await ( const revid of replaceQualifier( session, 'P370', 'P2302', 'P1793', '.+', '.*', 'testing replace-qualifier' ) ) {
-	console.log( `https://www.wikidata.org/wiki/Special:Diff/${revid}` );
-}
+const baseSummary = 'change [[Property:P1793]] from .* to .+';
+const summary = `${baseSummary} ([[:toolforge:editgroups/b/CB/${Math.floor( Math.random() * Math.pow( 2, 48 ) ).toString( 16 )}|details]] )`;
 
-/*
-console.log( await queryEntities( `
-SELECT ?entity WHERE {
-  ?entity p:P2302 [
-    ps:P2302 wd:Q21502404;
-    pq:P1793 "[1-9]\\\\d*"
-  ].
+const statementIds = await queryStatements( `
+SELECT ?property ?propertyLabel ?statement WHERE {
+  ?property a wikibase:Property;
+            wdt:P31 wd:Q18720640; # sandbox property
+            p:P2302 ?statement.
+  ?statement ps:P2302 wd:Q21502404;
+             pq:P1793 ".*".
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
 }
-` ) );
-*/
-
+` );
+for ( const statementId of statementIds ) {
+	const revid = await replaceQualifier( session, statementId, 'P2302', 'P1793', '.*', '.+', summary );
+	if ( revid !== null ) {
+		console.log( `https://www.wikidata.org/wiki/Special:Diff/${revid}` );
+	}
+}
