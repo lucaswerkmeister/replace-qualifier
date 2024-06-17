@@ -69,21 +69,25 @@ if ( !username || !password ) {
 }
 await login( session, username, password );
 
-const baseSummary = 'change [[Property:P1793]] from .* to .+';
+const fromString = '^\\d+$';
+const toString = '\\d+';
+const fromStringSparql = '"^\\\\d+$"';
+
+const baseSummary = `change [[Property:P1793]] from ${fromString} to ${toString}`;
 const summary = `${baseSummary} ([[:toolforge:editgroups/b/CB/${Math.floor( Math.random() * Math.pow( 2, 48 ) ).toString( 16 )}|details]])`;
 
 const statementIds = await queryStatements( `
 SELECT ?property ?propertyLabel ?statement WHERE {
   ?property a wikibase:Property;
-            wdt:P31 wd:Q18720640; # sandbox property
             p:P2302 ?statement.
   ?statement ps:P2302 wd:Q21502404;
-             pq:P1793 ".*".
+             pq:P1793 ${fromStringSparql}.
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
 }
 ` );
+
 for ( const statementId of statementIds ) {
-	const revid = await replaceQualifier( session, statementId, 'P2302', 'P1793', '.*', '.+', summary );
+	const revid = await replaceQualifier( session, statementId, 'P2302', 'P1793', fromString, toString, summary );
 	if ( revid !== null ) {
 		console.log( `https://www.wikidata.org/wiki/Special:Diff/${revid}` );
 	}
