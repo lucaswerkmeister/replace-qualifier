@@ -69,9 +69,9 @@ if ( !username || !password ) {
 }
 await login( session, username, password );
 
-const fromString = '^\\d+$';
-const toString = '\\d+';
-const fromStringSparql = '"^\\\\d+$"';
+const fromString = '^[1-9]\\d*$';
+const toString = '[1-9]\\d*';
+const fromStringSparql = '"^[1-9]\\\\d*$"';
 
 const baseSummary = `change [[Property:P1793]] from ${fromString} to ${toString}`;
 const summary = `${baseSummary} ([[:toolforge:editgroups/b/CB/${Math.floor( Math.random() * Math.pow( 2, 48 ) ).toString( 16 )}|details]])`;
